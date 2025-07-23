@@ -1,7 +1,7 @@
 package models
 
 import (
-	"parking-service/internal/config"
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
 )
 
 type User struct {

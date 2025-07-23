@@ -4,8 +4,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"parking-service/internal/config"
-	"parking-service/internal/routes"
+
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/routes"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

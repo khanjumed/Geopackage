@@ -2,10 +2,11 @@ package controllers
 
 import (
 	"net/http"
-	"parking-service/internal/config"
-	"parking-service/internal/models"
-	"parking-service/internal/services"
 	"strconv"
+
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/models"
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

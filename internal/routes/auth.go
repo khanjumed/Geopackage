@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"parking-service/internal/controllers"
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/controllers"
 
 	"github.com/gin-gonic/gin"
 )

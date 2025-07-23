@@ -8,14 +8,14 @@ A modular Go backend that can run standalone or be imported into other applicati
 ## Run Locally
 ```bash
 git clone <repo>
-cd parking-service
+cd gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project
 cp .env.example .env
 go run cmd/server/main.go
 ```
 
 ## Use in Another Go App
 ```go
-import "github.com/yourusername/parking-service/internal/routes"
+import "github.com/yourusername/gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/routes"
 r := gin.Default()
 routes.Register(r)
 r.Run()

@@ -1,4 +1,4 @@
-module parking-service
+module gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project
 
 go 1.24.4
 

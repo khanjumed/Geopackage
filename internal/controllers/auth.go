@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"parking-service/internal/models"
-	"parking-service/internal/services"
 	"time"
+
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/models"
+	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

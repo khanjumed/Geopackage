@@ -1,19 +1,22 @@
-# Go Backend for Parking Spot Finder
+# Parking Service
 
-## Setup
+A modular Go backend that can run standalone or be imported into other applications. Includes:
+- REST API for managing parking spots
+- Google Maps geocoding
+- HTML/JS frontend map viewer
 
-1. Install Go and MySQL
+## Run Locally
+```bash
+git clone <repo>
+cd parking-service
+cp .env.example .env
+go run cmd/server/main.go
+```
 
-2. Create database and table:
-
-```sql
-CREATE DATABASE parkingdb;
-USE parkingdb;
-
-CREATE TABLE parking_spots (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255),
-  lat DOUBLE,
-  lng DOUBLE,
-  available_spots INT
-);
+## Use in Another Go App
+```go
+import "github.com/yourusername/parking-service/internal/routes"
+r := gin.Default()
+routes.Register(r)
+r.Run()
+```

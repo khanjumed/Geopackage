@@ -45,7 +45,7 @@
     let directionsRenderer;
 
     async function initMap() {
-      const fallbackLocation = { lat: 18.50, lng: 73.8505 };
+      const fallbackLocation = { lat: 18.5204, lng: 73.8567 };
 
       map = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
@@ -117,7 +117,7 @@
 
     async function loadParkingSpots(center) {
       try {
-        const response = await fetch(`http://localhost:8080/api/parking-spots/nearby?lat=${center.lat}&lng=${center.lng}`);
+        const response = await fetch(`/api/parking-spots/nearby?lat=${center.lat}&lng=${center.lng}`);
         const json = await response.json();
         const spots = json.data;
 
@@ -198,7 +198,7 @@
   </script>
 
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2CoAFolpCsbZIH7WmwFqEv1Ska1vto5w&libraries=places&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key={{.GoogleMapsApiKey}}&libraries=places&callback=initMap"
     async defer>
   </script>
 </body>

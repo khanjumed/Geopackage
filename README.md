@@ -8,14 +8,14 @@ A modular Go backend that can run standalone or be imported into other applicati
 ## Run Locally
 ```bash
 git clone <repo>
-cd github.com/khanjumed/Geopackage
+cd github.com/khanjumed/geopackage
 cp .env.example .env
 go run cmd/server/main.go
 ```
 
 ## Use in Another Go App
 ```go
-import "github.com/yourusername/github.com/khanjumed/Geopackage/internal/routes"
+import "github.com/yourusername/github.com/khanjumed/geopackage/internal/routes"
 r := gin.Default()
 routes.Register(r)
 r.Run()

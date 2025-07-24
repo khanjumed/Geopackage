@@ -1,4 +1,4 @@
-module github.com/khanjumed/Geopackage
+module github.com/khanjumed/geopackage
 
 go 1.24.4
 

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/khanjumed/Geopackage/internal/config"
+	"github.com/khanjumed/geopackage/internal/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"

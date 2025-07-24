@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/khanjumed/Geopackage/internal/models"
-	"github.com/khanjumed/Geopackage/internal/services"
+	"github.com/khanjumed/geopackage/internal/models"
+	"github.com/khanjumed/geopackage/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

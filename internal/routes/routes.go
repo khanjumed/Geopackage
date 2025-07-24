@@ -1,9 +1,9 @@
 package routes
 
 import (
-	"github.com/khanjumed/Geopackage/internal/config"
-	"github.com/khanjumed/Geopackage/internal/controllers"
-	"github.com/khanjumed/Geopackage/internal/middleware"
+	"github.com/khanjumed/geopackage/internal/config"
+	"github.com/khanjumed/geopackage/internal/controllers"
+	"github.com/khanjumed/geopackage/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )

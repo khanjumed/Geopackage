@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/khanjumed/Geopackage/internal/config"
+	"github.com/khanjumed/geopackage/internal/config"
 )
 
 type User struct {

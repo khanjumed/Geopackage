@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"github.com/khanjumed/Geopackage/internal/controllers"
+	"github.com/khanjumed/geopackage/internal/controllers"
 
 	"github.com/gin-gonic/gin"
 )

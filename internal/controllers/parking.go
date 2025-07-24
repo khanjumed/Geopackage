@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/khanjumed/Geopackage/internal/config"
-	"github.com/khanjumed/Geopackage/internal/models"
-	"github.com/khanjumed/Geopackage/internal/services"
+	"github.com/khanjumed/geopackage/internal/config"
+	"github.com/khanjumed/geopackage/internal/models"
+	"github.com/khanjumed/geopackage/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

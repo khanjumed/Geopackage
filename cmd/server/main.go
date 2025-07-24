@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/khanjumed/Geopackage/internal/config"
-	"github.com/khanjumed/Geopackage/internal/routes"
+	"github.com/khanjumed/geopackage/internal/config"
+	"github.com/khanjumed/geopackage/internal/routes"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

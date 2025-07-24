@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/models"
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/services"
+	"github.com/khanjumed/Geopackage/internal/models"
+	"github.com/khanjumed/Geopackage/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

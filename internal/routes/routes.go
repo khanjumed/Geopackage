@@ -1,9 +1,9 @@
 package routes
 
 import (
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/controllers"
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/middleware"
+	"github.com/khanjumed/Geopackage/internal/config"
+	"github.com/khanjumed/Geopackage/internal/controllers"
+	"github.com/khanjumed/Geopackage/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )

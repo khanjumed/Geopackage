@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/routes"
+	"github.com/khanjumed/Geopackage/internal/config"
+	"github.com/khanjumed/Geopackage/internal/routes"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

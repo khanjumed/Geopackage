@@ -1,7 +1,7 @@
 package models
 
 import (
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
+	"github.com/khanjumed/Geopackage/internal/config"
 )
 
 type User struct {

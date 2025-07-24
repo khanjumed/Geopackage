@@ -1,4 +1,4 @@
-module gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project
+module github.com/khanjumed/Geopackage
 
 go 1.24.4
 

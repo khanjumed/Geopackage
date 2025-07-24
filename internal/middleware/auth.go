@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
+	"github.com/khanjumed/Geopackage/internal/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/config"
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/models"
-	"gitlab.plainsurf.com/plainsurf/poc/jumed/poc-project/internal/services"
+	"github.com/khanjumed/Geopackage/internal/config"
+	"github.com/khanjumed/Geopackage/internal/models"
+	"github.com/khanjumed/Geopackage/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

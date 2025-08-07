@@ -61,11 +61,12 @@
       autocomplete.bindTo("bounds", map);
 
       try {
-        const loc = await getUserLocation();
+        const loc = await getUserLocationOnce();
         if (loc) {
           userLocation = loc;
           addUserMarker(userLocation);
           await loadParkingSpots(userLocation);
+          startLiveTracking(); // Start live tracking here
         } else {
           alert("Unable to get your location. Please use the address input to search manually.");
         }
@@ -75,7 +76,7 @@
       }
     }
 
-    function getUserLocation() {
+    function getUserLocationOnce() {
       return new Promise((resolve) => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -98,21 +99,50 @@
       });
     }
 
-    function addUserMarker(latlng) {
-      if (userMarker) userMarker.setMap(null);
-      userMarker = new google.maps.Marker({
-        position: latlng,
-        map,
-        title: "You are here",
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: "#4285F4",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
+    function startLiveTracking() {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        (position) => {
+          userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          addUserMarker(userLocation);
+          map.panTo(userLocation); // Optional: follow user
         },
-      });
+        (error) => {
+          console.error("Live tracking error:", error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    }
+
+    function addUserMarker(latlng) {
+      if (userMarker) {
+        userMarker.setPosition(latlng);
+      } else {
+        userMarker = new google.maps.Marker({
+          position: latlng,
+          map,
+          title: "You are here",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+      }
     }
 
     async function loadParkingSpots(center) {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
   <title>Nearby Parking Spots</title>
@@ -223,6 +223,1335 @@
       map.setCenter(location);
       map.setZoom(15);
       addUserMarker(location);
+      await loadParkingSpots(location);
+    }
+  </script>
+
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key={{.GoogleMapsApiKey}}&libraries=places&callback=initMap"
+    async defer>
+  </script>
+</body>
+</html> -->
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Delivery Partner Location Tracking</title>
+  <meta charset="utf-8" />
+  <style>
+    #map { height: 90vh; width: 100%; }
+  </style>
+</head>
+<body>
+  <h2>Delivery Partner Location Tracking</h2>
+  <div id="map"></div>
+
+  <script>
+    let map;
+    let partnerMarker;
+
+    const FALLBACK = { lat: 18.5204, lng: 73.8567 }; // Pune
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: FALLBACK,
+      });
+
+      // Put a visible marker immediately so you know markers render
+      addOrMoveMarker(FALLBACK, "Waiting for GPS…");
+
+      startTrackingLocation();
+    }
+
+    function startTrackingLocation() {
+      if (!("geolocation" in navigator)) {
+        console.warn("Geolocation not supported by this browser.");
+        return;
+      }
+
+      // First fix (fast as possible)
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          addOrMoveMarker(loc, "Delivery Partner");
+          map.setCenter(loc);
+          sendLocationToBackend(loc);
+        },
+        onGeoError,
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+
+      // Continuous updates
+      navigator.geolocation.watchPosition(
+        pos => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          addOrMoveMarker(loc, "Delivery Partner");
+          // Pan less aggressively if you want: comment out next line if it feels jumpy
+          map.panTo(loc);
+          sendLocationToBackend(loc);
+        },
+        onGeoError,
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+
+    function addOrMoveMarker(location, title = "Delivery Partner") {
+      if (partnerMarker) {
+        partnerMarker.setPosition(location);
+        return;
+      }
+      partnerMarker = new google.maps.Marker({
+        position: location,
+        map,
+        title,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: "#FF0000",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+    }
+
+    function onGeoError(err) {
+      // Helpful diagnostics
+      const codes = {
+        1: "PERMISSION_DENIED",
+        2: "POSITION_UNAVAILABLE",
+        3: "TIMEOUT",
+      };
+      console.error(`Geolocation error (${codes[err.code] || err.code}): ${err.message}`);
+      // Keep the fallback marker visible; optionally show a toast/UI hint for the user
+    }
+
+    function sendLocationToBackend(location) {
+      const partnerID = "partner123"; // TODO: make dynamic
+
+      fetch(`/update-partner-location/${partnerID}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(location),
+      })
+        .then(r => r.json())
+        .then(data => console.log("Location sent:", data))
+        .catch(e => console.error("Error sending location:", e));
+    }
+  </script>
+
+  <Keep ONLY the callback; remove window.onload usage -->
+  <!-- <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2CoAFolpCsbZIH7WmwFqEv1Ska1vto5w&callback=initMap"
+    async defer>
+  </script>
+</body>
+</html> --> 
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <title>Nearby Parking Spots</title>
+  <meta charset="utf-8" />
+  <style>
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+
+    #search-container {
+      padding: 10px;
+      background: #f1f1f1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      width: 300px;
+      padding: 6px;
+    }
+
+    button {
+      padding: 6px 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="search-container">
+    <input type="text" id="addressInput" placeholder="Enter address..." />
+    <button onclick="searchAddress()">Search</button>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    let map;
+    let autocomplete;
+    let userMarker;
+    let userLocation = null;
+    let directionsService;
+    let directionsRenderer;
+
+    async function initMap() {
+      const fallbackLocation = { lat: 18.5204, lng: 73.8567 };
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: fallbackLocation,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: false });
+      directionsRenderer.setMap(map);
+
+      const input = document.getElementById("addressInput");
+
+      // Initialize the Autocomplete for the address input
+      autocomplete = new google.maps.places.Autocomplete(input, {
+        fields: ["address_components", "geometry", "name"]
+      });
+      autocomplete.setFields(["address_components", "geometry", "name"]);
+      autocomplete.addListener("place_changed", onPlaceChanged);
+
+      // Get user location
+      try {
+        const loc = await getUserLocationOnce();
+        if (loc) {
+          userLocation = loc;
+          addUserMarker(userLocation);
+          await loadParkingSpots(userLocation);
+        } else {
+          alert("Unable to get your location. Please use the address input to search manually.");
+        }
+      } catch (err) {
+        console.warn("Geolocation error:", err.message);
+        alert("Geolocation not allowed. Please use the search box to find parking near you.");
+      }
+    }
+
+    // Function to handle address autocomplete
+    function onPlaceChanged() {
+      const place = autocomplete.getPlace();
+      if (!place.geometry) {
+        alert("No details available for this address.");
+        return;
+      }
+
+      const location = {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      };
+
+      userLocation = location;
+      map.setCenter(location);
+      map.setZoom(15);
+      addUserMarker(location);
+      loadParkingSpots(location);
+    }
+
+    function addUserMarker(latlng) {
+      if (userMarker) {
+        userMarker.setPosition(latlng);
+      } else {
+        userMarker = new google.maps.Marker({
+          position: latlng,
+          map,
+          title: "You are here",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+      }
+    }
+
+    async function loadParkingSpots(center) {
+      try {
+        const response = await fetch(`/api/parking-spots/nearby?lat=${center.lat}&lng=${center.lng}`);
+        const json = await response.json();
+        const spots = json.data;
+
+        if (!spots.length) {
+          alert("No parking spots found nearby.");
+          return;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(center);
+
+        spots.forEach((spot) => {
+          const position = { lat: spot.lat, lng: spot.lng };
+
+          const marker = new google.maps.Marker({
+            position,
+            map,
+            title: spot.name,
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<strong>${spot.name}</strong><br>Lat: ${spot.lat}<br>Lng: ${spot.lng}`,
+          });
+
+          marker.addListener("click", () => {
+            infoWindow.open(map, marker);
+          });
+
+          bounds.extend(position);
+        });
+
+        map.fitBounds(bounds);
+      } catch (err) {
+        console.error("Map error:", err);
+        alert("Error loading parking data.");
+      }
+    }
+
+    async function getUserLocationOnce() {
+      return new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              });
+            },
+            (err) => reject(err),
+            {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0,
+            }
+          );
+        } else {
+          reject("Geolocation is not supported by your browser.");
+        }
+      });
+    }
+  </script>
+
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2CoAFolpCsbZIH7WmwFqEv1Ska1vto5w&libraries=places&callback=initMap"
+    async defer>
+  </script>
+</body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <title>Nearby Parking Spots</title>
+  <meta charset="utf-8" />
+  <style>
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+
+    #search-container {
+      padding: 10px;
+      background: #f1f1f1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      width: 300px;
+      padding: 6px;
+    }
+
+    button {
+      padding: 6px 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="search-container">
+    <input type="text" id="addressInput" placeholder="Enter address..." />
+    <button onclick="searchAddress()">Search</button>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    let map;
+    let autocomplete;
+    let userMarker;
+    let userLocation = null;
+    let selectedParkingLocation = null; // To store the selected parking location
+    let directionsService;
+    let directionsRenderer;
+
+    async function initMap() {
+      const fallbackLocation = { lat: 18.5204, lng: 73.8567 }; // Default fallback location (Pune, India)
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: fallbackLocation,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: false });
+      directionsRenderer.setMap(map);
+
+      const input = document.getElementById("addressInput");
+      autocomplete = new google.maps.places.Autocomplete(input);
+      autocomplete.bindTo("bounds", map);
+
+      try {
+        const loc = await getUserLocationOnce();
+        if (loc) {
+          userLocation = loc;
+          map.setCenter(userLocation);  // Center the map on the user's location
+          map.setZoom(15);              // Zoom in to the user's location
+          addUserMarker(userLocation); // Add marker at user's location
+          await loadParkingSpots(userLocation); // Load nearby parking spots
+        } else {
+          alert("Unable to get your location. Please use the address input to search manually.");
+        }
+      } catch (err) {
+        console.warn("Geolocation error:", err.message);
+        alert("Geolocation not allowed. Please use the search box to find parking near you.");
+      }
+    }
+
+    function getUserLocationOnce() {
+      return new Promise((resolve) => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              });
+            },
+            () => resolve(null),
+            {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0,
+            }
+          );
+        } else {
+          resolve(null);
+        }
+      });
+    }
+
+    function startLiveTracking() {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        (position) => {
+          userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          addUserMarker(userLocation);
+          map.panTo(userLocation); // Optional: follow user
+        },
+        (error) => {
+          console.error("Live tracking error:", error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    }
+
+    function addUserMarker(latlng) {
+      if (userMarker) {
+        userMarker.setPosition(latlng);
+      } else {
+        userMarker = new google.maps.Marker({
+          position: latlng,
+          map,
+          title: "You are here",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#4285F4", // Blue color for user
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+      }
+    }
+
+    async function loadParkingSpots(center) {
+      try {
+        const response = await fetch(`/api/parking-spots/nearby?lat=${center.lat}&lng=${center.lng}`);
+        const json = await response.json();
+        const spots = json.data;
+
+        if (!spots.length) {
+          alert("No parking spots found nearby.");
+          return;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(center);
+
+        spots.forEach((spot) => {
+          const position = { lat: spot.lat, lng: spot.lng };
+
+          const marker = new google.maps.Marker({
+            position,
+            map,
+            title: spot.name,
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<strong>${spot.name}</strong><br>Lat: ${spot.lat}<br>Lng: ${spot.lng}`,
+          });
+
+          marker.addListener("click", () => {
+            infoWindow.open(map, marker);
+
+            selectedParkingLocation = position; // Set the selected parking location
+
+            if (!userLocation) {
+              alert("User location not available yet.");
+              return;
+            }
+
+            directionsService.route(
+              {
+                origin: userLocation,
+                destination: position,
+                travelMode: google.maps.TravelMode.DRIVING,
+              },
+              (result, status) => {
+                if (status === google.maps.DirectionsStatus.OK) {
+                  directionsRenderer.setDirections(result);
+                } else {
+                  alert("Could not get directions: " + status);
+                }
+              }
+            );
+
+            // Send the locations to the backend after the parking spot is selected
+            sendLocationToBackend();
+          });
+
+          bounds.extend(position);
+        });
+
+        map.fitBounds(bounds);
+      } catch (err) {
+        console.error("Map error:", err);
+        alert("Error loading parking data.");
+      }
+    }
+
+    async function searchAddress() {
+      const place = autocomplete.getPlace();
+
+      if (!place || !place.geometry || !place.geometry.location) {
+        alert("Please select an address from suggestions.");
+        return;
+      }
+
+      const location = {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      };
+
+      userLocation = location;
+      map.setCenter(location);
+      map.setZoom(15);
+      addUserMarker(location);
+      await loadParkingSpots(location);
+    }
+
+    // Send the current location and selected parking location to the backend
+    async function sendLocationToBackend() {
+      if (!userLocation || !selectedParkingLocation) {
+        alert("User location or selected parking location is missing.");
+        return;
+      }
+
+      const data = {
+        customer_location: userLocation,
+        parking_location: selectedParkingLocation,
+      };
+
+      try {
+        const response = await fetch(`/api/send-location-to-delivery-partner/${partnerID}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (response.ok) {
+          console.log("Locations sent to the backend successfully.");
+        } else {
+          console.error("Failed to send location to backend.");
+        }
+      } catch (error) {
+        console.error("Error sending location to backend:", error);
+      }
+    }
+  </script>
+
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2CoAFolpCsbZIH7WmwFqEv1Ska1vto5w&callback=initMap"
+    async defer>
+  </script>
+</body>
+</html> -->
+
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <title>Nearby Parking Spots</title>
+  <meta charset="utf-8" />
+  <style>
+    #map { height: 90vh; width: 100%; }
+    #search-container {
+      padding: 10px; background: #f1f1f1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    input[type="text"], input[type="search"] { width: 300px; padding: 6px; }
+    button { padding: 6px 10px; }
+    .pill { padding: 4px 8px; border-radius: 999px; background: #e8e8e8; }
+  </style>
+</head>
+<body>
+
+  <div id="search-container">
+    <input type="text" id="addressInput" placeholder="Enter address..." />
+    <button id="btnSearch" onclick="searchAddress()">Search</button>
+
+    <input type="search" id="orderId" placeholder="Order ID (e.g. ORD123)" style="width: 200px;" />
+    <button id="btnSave">Save Pickup & Drop</button>
+    <button id="btnReset">Reset Spots</button>
+    <span id="wsStatus" class="pill">WS: offline</span>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    let map;
+    let autocomplete;
+    let userMarker;          // pickup marker (customer)
+    let partnerMarker;       // live partner marker (red)
+    let dropMarker;          // selected parking spot (blue)
+    let userLocation = null; // {lat,lng}
+    let directionsService;
+    let directionsRenderer;
+
+    // parking markers management
+    let parkingMarkers = [];
+    let selectedParkingMarker = null;
+
+    // websocket
+    let ws = null;
+
+    async function initMap() {
+      const fallbackLocation = { lat: 18.5204, lng: 73.8567 };
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: fallbackLocation,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: false });
+      directionsRenderer.setMap(map);
+
+      const input = document.getElementById("addressInput");
+      autocomplete = new google.maps.places.Autocomplete(input);
+      autocomplete.bindTo("bounds", map);
+
+      // When user chooses a place from autocomplete dropdown, center map & reload spots
+      autocomplete.addListener("place_changed", async () => {
+        const place = autocomplete.getPlace();
+        if (!place || !place.geometry || !place.geometry.location) return;
+        const location = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        };
+        userLocation = location;
+        addUserMarker(location);
+        map.setCenter(location);
+        map.setZoom(15);
+        clearParkingMarkers();
+        await loadParkingSpots(location);
+      });
+
+      try {
+        const loc = await getUserLocationOnce();
+        if (loc) {
+          userLocation = loc;
+          addUserMarker(userLocation);
+          await loadParkingSpots(userLocation);
+          startLiveTracking(); // keep pickup updated; will also re-draw route if a drop is selected
+        } else {
+          alert("Unable to get your location. Please use the address input to search manually.");
+        }
+      } catch (err) {
+        console.warn("Geolocation error:", err.message);
+        alert("Geolocation not allowed. Please use the search box to find parking near you.");
+      }
+
+      // Save order (POST /api/order) then connect WS
+      document.getElementById("btnSave").addEventListener("click", onSaveOrder);
+      // Reset & show all nearby again
+      document.getElementById("btnReset").addEventListener("click", async () => {
+        if (!userLocation) return;
+        directionsRenderer.set('directions', null);
+        if (dropMarker) { dropMarker.setMap(null); dropMarker = null; }
+        clearParkingMarkers();
+        await loadParkingSpots(userLocation);
+      });
+    }
+
+    function getUserLocationOnce() {
+      return new Promise((resolve) => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              });
+            },
+            () => resolve(null),
+            {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0,
+            }
+          );
+        } else {
+          resolve(null);
+        }
+      });
+    }
+
+    function startLiveTracking() {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        (position) => {
+          userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          addUserMarker(userLocation);
+          // If a drop is selected, keep the route fresh as we move
+          if (dropMarker) drawRoute(userLocation, dropMarker.getPosition());
+        },
+        (error) => {
+          console.error("Live tracking error:", error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    }
+
+    function addUserMarker(latlng) {
+      if (userMarker) {
+        userMarker.setPosition(latlng);
+      } else {
+        userMarker = new google.maps.Marker({
+          position: latlng,
+          map,
+          title: "Pickup (You)",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#34a853",     // green
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+      }
+    }
+
+    function clearParkingMarkers() {
+      parkingMarkers.forEach(m => m.setMap(null));
+      parkingMarkers = [];
+      selectedParkingMarker = null;
+    }
+
+    async function loadParkingSpots(center) {
+      try {
+        const response = await fetch(`/api/parking-spots/nearby?lat=${center.lat}&lng=${center.lng}`);
+        const json = await response.json();
+        const spots = json.data || [];
+
+        if (!spots.length) {
+          alert("No parking spots found nearby.");
+          return;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(center);
+
+        spots.forEach((spot) => {
+          const position = { lat: spot.lat, lng: spot.lng };
+
+          const marker = new google.maps.Marker({
+            position,
+            map,
+            title: spot.name,
+          });
+
+          // Keep list to hide others once one is selected
+          parkingMarkers.push(marker);
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<strong>${spot.name}</strong><br>Lat: ${spot.lat.toFixed(6)}<br>Lng: ${spot.lng.toFixed(6)}`,
+          });
+
+          marker.addListener("click", () => {
+            infoWindow.open(map, marker);
+            if (!userLocation) {
+              alert("User location not available yet.");
+              return;
+            }
+            // Select this as DROP, draw route, hide others
+            setDrop(position);
+            drawRoute(userLocation, position);
+            hideOtherParkingMarkers(marker);
+            selectedParkingMarker = marker;
+          });
+
+          bounds.extend(position);
+        });
+
+        map.fitBounds(bounds);
+      } catch (err) {
+        console.error("Map error:", err);
+        alert("Error loading parking data.");
+      }
+    }
+
+    function hideOtherParkingMarkers(keepMarker) {
+      parkingMarkers.forEach(m => {
+        if (m !== keepMarker) m.setMap(null);
+      });
+    }
+
+    function setDrop(latlng) {
+      if (dropMarker) dropMarker.setMap(null);
+      dropMarker = new google.maps.Marker({
+        position: latlng,
+        map,
+        title: "Drop (Parking)",
+        icon: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+      });
+      // keep view focused on pickup+drop
+      const b = new google.maps.LatLngBounds();
+      if (userMarker) b.extend(userMarker.getPosition());
+      if (dropMarker) b.extend(dropMarker.getPosition());
+      if (!b.isEmpty()) map.fitBounds(b);
+    }
+
+    function drawRoute(origin, destination) {
+      directionsService.route(
+        {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK) {
+            directionsRenderer.setDirections(result);
+          } else {
+            console.warn("Could not get directions:", status);
+          }
+        }
+      );
+    }
+
+    async function onSaveOrder() {
+      const orderId = document.getElementById("orderId").value.trim();
+      if (!orderId) return alert("Please enter an Order ID.");
+      if (!userLocation) return alert("Pickup not available yet.");
+      if (!dropMarker) return alert("Please select a parking spot as Drop.");
+
+      const payload = {
+        orderId,
+        pickup: { lat: userLocation.lat, lng: userLocation.lng },
+        drop:   { lat: dropMarker.getPosition().lat(), lng: dropMarker.getPosition().lng() }
+      };
+
+      try {
+        const res = await fetch("/api/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const j = await res.json();
+        if (!j.ok) throw new Error(j.error || "Save failed");
+        alert("Order saved. Share Order ID with your delivery partner.");
+
+        // Connect WS so we can see partner live location
+        connectWS(orderId);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to save order.");
+      }
+    }
+
+    function connectWS(orderId) {
+      // close previous socket if any
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+
+      const proto = (location.protocol === "https:") ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws?orderId=${encodeURIComponent(orderId)}&role=customer`);
+
+      ws.onopen  = () => document.getElementById("wsStatus").textContent = "WS: online";
+      ws.onclose = () => document.getElementById("wsStatus").textContent = "WS: offline";
+
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "partner_location") {
+          const pos = { lat: msg.lat, lng: msg.lng };
+          if (!partnerMarker) {
+            partnerMarker = new google.maps.Marker({
+              position: pos,
+              map,
+              title: "Delivery Partner",
+              icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+            });
+          } else {
+            partnerMarker.setPosition(pos);
+          }
+        } else if (msg.type === "order_info") {
+          // If backend broadcasts updated pickup/drop later, reflect it
+          if (msg.pickup) {
+            userLocation = msg.pickup;
+            addUserMarker(userLocation);
+          }
+          if (msg.drop) setDrop(msg.drop);
+          if (userLocation && dropMarker) drawRoute(userLocation, dropMarker.getPosition());
+        }
+      };
+    }
+
+    // Keep your manual search button working if user types & presses Search
+    async function searchAddress() {
+      const place = autocomplete.getPlace();
+      if (!place || !place.geometry || !place.geometry.location) {
+        alert("Please select an address from suggestions.");
+        return;
+      }
+      const location = {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      };
+
+      userLocation = location;
+      addUserMarker(location);
+      map.setCenter(location);
+      map.setZoom(15);
+
+      directionsRenderer.set('directions', null);
+      if (dropMarker) { dropMarker.setMap(null); dropMarker = null; }
+      clearParkingMarkers();
+      await loadParkingSpots(location);
+    }
+  </script>
+
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key={{.GoogleMapsApiKey}}&libraries=places&callback=initMap"
+    async defer>
+  </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Nearby Parking Spots</title>
+  <meta charset="utf-8" />
+  <style>
+    #map { height: 90vh; width: 100%; }
+    #search-container {
+      padding: 10px; background: #f1f1f1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    input[type="text"], input[type="search"] { width: 300px; padding: 6px; }
+    button { padding: 6px 10px; }
+    .pill { padding: 4px 8px; border-radius: 999px; background: #e8e8e8; }
+  </style>
+</head>
+<body>
+
+  <div id="search-container">
+    <input type="text" id="addressInput" placeholder="Enter address..." />
+    <button id="btnSearch" onclick="searchAddress()">Search</button>
+
+    <input type="search" id="orderId" placeholder="Order ID (e.g. ORD123)" style="width: 200px;" />
+    <button id="btnSave">Save Pickup & Drop</button>
+    <button id="btnReset">Reset Spots</button>
+    <span id="wsStatus" class="pill">WS: offline</span>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    let map;
+    let autocomplete;
+    let userMarker;          // pickup marker (customer)
+    let partnerMarker;       // live partner marker (red)
+    let dropMarker;          // selected parking spot (blue)
+    let userLocation = null; // {lat,lng}
+    let directionsService;
+    let directionsRenderer;
+
+    // parking markers management
+    let parkingMarkers = [];
+    let selectedParkingMarker = null;
+
+    // websocket
+    let ws = null;
+
+    async function initMap() {
+      const fallbackLocation = { lat: 18.5204, lng: 73.8567 };
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: fallbackLocation,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: false });
+      directionsRenderer.setMap(map);
+
+      const input = document.getElementById("addressInput");
+      autocomplete = new google.maps.places.Autocomplete(input);
+      autocomplete.bindTo("bounds", map);
+
+      // When user chooses a place from autocomplete dropdown, center map & reload spots
+      autocomplete.addListener("place_changed", async () => {
+        const place = autocomplete.getPlace();
+        if (!place || !place.geometry || !place.geometry.location) return;
+        const location = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        };
+        userLocation = location;
+        addUserMarker(location);
+        map.setCenter(location);
+        map.setZoom(15);
+        clearParkingMarkers();
+        await loadParkingSpots(location);
+      });
+
+      try {
+        const loc = await getUserLocationOnce();
+        if (loc) {
+          userLocation = loc;
+          addUserMarker(userLocation);
+          await loadParkingSpots(userLocation);
+          startLiveTracking(); // keep pickup updated; will also re-draw route if a drop is selected
+        } else {
+          alert("Unable to get your location. Please use the address input to search manually.");
+        }
+      } catch (err) {
+        console.warn("Geolocation error:", err.message);
+        alert("Geolocation not allowed. Please use the search box to find parking near you.");
+      }
+
+      // Save order (POST /api/order) then connect WS
+      document.getElementById("btnSave").addEventListener("click", onSaveOrder);
+      // Reset & show all nearby again
+      document.getElementById("btnReset").addEventListener("click", async () => {
+        if (!userLocation) return;
+        directionsRenderer.set('directions', null);
+        if (dropMarker) { dropMarker.setMap(null); dropMarker = null; }
+        clearParkingMarkers();
+        await loadParkingSpots(userLocation);
+      });
+    }
+
+    function getUserLocationOnce() {
+      return new Promise((resolve) => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              });
+            },
+            () => resolve(null),
+            {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0,
+            }
+          );
+        } else {
+          resolve(null);
+        }
+      });
+    }
+
+    function startLiveTracking() {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        (position) => {
+          userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          addUserMarker(userLocation);
+          // If a drop is selected, keep the route fresh as we move
+          if (dropMarker) drawRoute(userLocation, dropMarker.getPosition());
+        },
+        (error) => {
+          console.error("Live tracking error:", error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    }
+
+    function addUserMarker(latlng) {
+      if (userMarker) {
+        userMarker.setPosition(latlng);
+      } else {
+        userMarker = new google.maps.Marker({
+          position: latlng,
+          map,
+          title: "Pickup (You)",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#34a853",     // green
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+      }
+    }
+
+    function clearParkingMarkers() {
+      parkingMarkers.forEach(m => m.setMap(null));
+      parkingMarkers = [];
+      selectedParkingMarker = null;
+    }
+
+    async function loadParkingSpots(center) {
+      try {
+        const response = await fetch(`/api/parking-spots/nearby?lat=${center.lat}&lng=${center.lng}`);
+        const json = await response.json();
+        const spots = json.data || [];
+
+        if (!spots.length) {
+          alert("No parking spots found nearby.");
+          return;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(center);
+
+        spots.forEach((spot) => {
+          const position = { lat: spot.lat, lng: spot.lng };
+
+          const marker = new google.maps.Marker({
+            position,
+            map,
+            title: spot.name,
+          });
+
+          // Keep list to hide others once one is selected
+          parkingMarkers.push(marker);
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<strong>${spot.name}</strong><br>Lat: ${spot.lat.toFixed(6)}<br>Lng: ${spot.lng.toFixed(6)}`,
+          });
+
+          marker.addListener("click", () => {
+            infoWindow.open(map, marker);
+            if (!userLocation) {
+              alert("User location not available yet.");
+              return;
+            }
+            // Select this as DROP, draw route, hide others
+            setDrop(position);
+            drawRoute(userLocation, position);
+            hideOtherParkingMarkers(marker);
+            selectedParkingMarker = marker;
+          });
+
+          bounds.extend(position);
+        });
+
+        map.fitBounds(bounds);
+      } catch (err) {
+        console.error("Map error:", err);
+        alert("Error loading parking data.");
+      }
+    }
+
+    function hideOtherParkingMarkers(keepMarker) {
+      parkingMarkers.forEach(m => {
+        if (m !== keepMarker) m.setMap(null);
+      });
+    }
+
+    function setDrop(latlng) {
+      if (dropMarker) dropMarker.setMap(null);
+      dropMarker = new google.maps.Marker({
+        position: latlng,
+        map,
+        title: "Drop (Parking)",
+        icon: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+      });
+      // keep view focused on pickup+drop
+      const b = new google.maps.LatLngBounds();
+      if (userMarker) b.extend(userMarker.getPosition());
+      if (dropMarker) b.extend(dropMarker.getPosition());
+      if (!b.isEmpty()) map.fitBounds(b);
+    }
+
+    function drawRoute(origin, destination) {
+      directionsService.route(
+        {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK) {
+            directionsRenderer.setDirections(result);
+          } else {
+            console.warn("Could not get directions:", status);
+          }
+        }
+      );
+    }
+
+    async function onSaveOrder() {
+      const orderId = document.getElementById("orderId").value.trim();
+      if (!orderId) return alert("Please enter an Order ID.");
+      if (!userLocation) return alert("Pickup not available yet.");
+      if (!dropMarker) return alert("Please select a parking spot as Drop.");
+
+      const payload = {
+        orderId,
+        pickup: { lat: userLocation.lat, lng: userLocation.lng },
+        drop:   { lat: dropMarker.getPosition().lat(), lng: dropMarker.getPosition().lng() }
+      };
+
+      try {
+        const res = await fetch("/api/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const j = await res.json();
+        if (!j.ok) throw new Error(j.error || "Save failed");
+        alert("Order saved. Share Order ID with your delivery partner.");
+
+        // Connect WS so we can see partner live location
+        connectWS(orderId);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to save order.");
+      }
+    }
+
+    function connectWS(orderId) {
+      // close previous socket if any
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+
+      const proto = (location.protocol === "https:") ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws?orderId=${encodeURIComponent(orderId)}&role=customer`);
+
+      ws.onopen  = () => document.getElementById("wsStatus").textContent = "WS: online";
+      ws.onclose = () => document.getElementById("wsStatus").textContent = "WS: offline";
+
+      // Log incoming messages and update the partner marker
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        console.log("Customer received message:", msg);  // Log incoming message
+        if (msg.type === "partner_location") {
+          const pos = { lat: msg.lat, lng: msg.lng };
+          if (!partnerMarker) {
+            partnerMarker = new google.maps.Marker({
+              position: pos,
+              map,
+              title: "Delivery Partner",
+              icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+            });
+          } else {
+            partnerMarker.setPosition(pos);  // Move partner marker to new location
+          }
+        } else if (msg.type === "order_info") {
+          // If backend broadcasts updated pickup/drop later, reflect it
+          if (msg.pickup) {
+            userLocation = msg.pickup;
+            addUserMarker(userLocation);
+          }
+          if (msg.drop) setDrop(msg.drop);
+          if (userLocation && dropMarker) drawRoute(userLocation, dropMarker.getPosition());
+        }
+      };
+    }
+
+    // Keep your manual search button working if user types & presses Search
+    async function searchAddress() {
+      const place = autocomplete.getPlace();
+      if (!place || !place.geometry || !place.geometry.location) {
+        alert("Please select an address from suggestions.");
+        return;
+      }
+      const location = {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      };
+
+      userLocation = location;
+      addUserMarker(location);
+      map.setCenter(location);
+      map.setZoom(15);
+
+      directionsRenderer.set('directions', null);
+      if (dropMarker) { dropMarker.setMap(null); dropMarker = null; }
+      clearParkingMarkers();
       await loadParkingSpots(location);
     }
   </script>

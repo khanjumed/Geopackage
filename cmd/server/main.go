@@ -22,7 +22,9 @@ func main() {
 	r := gin.Default()
 
 	// Load templates from templates/ folder
-	r.LoadHTMLFiles("templates/index.html")
+	r.LoadHTMLGlob("templates/*.html")
+
+	log.Println("Templates loaded successfully.")
 
 	// Serve index.html with injected API key
 	r.GET("/", func(c *gin.Context) {
@@ -31,7 +33,13 @@ func main() {
 			"GoogleMapsApiKey": apiKey,
 		})
 	})
-
+	// Serve the customer tracking page (track_partner.html)
+	r.GET("/track", func(c *gin.Context) {
+		apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
+		c.HTML(http.StatusOK, "track_partner.html", gin.H{
+			"google_maps_api_key": apiKey, // Pass API key for Google Maps
+		})
+	})
 	// Serve API routes
 	routes.Register(r)
 
@@ -43,5 +51,5 @@ func main() {
 		})
 	})
 
-	r.Run(":8081")
+	r.Run(":8082")
 }

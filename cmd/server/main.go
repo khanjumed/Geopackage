@@ -5,45 +5,52 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/khanjumed/geopackage/internal/config"
-	"github.com/khanjumed/geopackage/internal/routes"
-
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+
+	"github.com/khanjumed/geopackage/internal/config"
+	"github.com/khanjumed/geopackage/internal/routes"
 )
 
 func main() {
 	_ = godotenv.Load()
 
+	// Init MySQL
 	if err := config.InitDB(); err != nil {
 		log.Fatalf("DB connection failed: %v", err)
 	}
+	// Init Redis
+	if err := config.InitRedis(); err != nil {
+		log.Fatalf("Redis connection failed: %v", err)
+	}
+	defer config.Close()
 
 	r := gin.Default()
 
-	// Load templates from templates/ folder
+	// Load templates
 	r.LoadHTMLGlob("templates/*.html")
-
 	log.Println("Templates loaded successfully.")
 
-	// Serve index.html with injected API key
+	// Home (customer map)
 	r.GET("/", func(c *gin.Context) {
 		apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
 		c.HTML(http.StatusOK, "index.html", gin.H{
 			"GoogleMapsApiKey": apiKey,
 		})
 	})
-	// Serve the customer tracking page (track_partner.html)
+
+	// Partner/customer tracking page
 	r.GET("/track", func(c *gin.Context) {
 		apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
 		c.HTML(http.StatusOK, "track_partner.html", gin.H{
-			"google_maps_api_key": apiKey, // Pass API key for Google Maps
+			"google_maps_api_key": apiKey,
 		})
 	})
-	// Serve API routes
+
+	// API routes
 	routes.Register(r)
 
-	// Fallback for non-matching routes
+	// Fallback (serve index)
 	r.NoRoute(func(c *gin.Context) {
 		apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
 		c.HTML(http.StatusOK, "index.html", gin.H{
@@ -51,5 +58,8 @@ func main() {
 		})
 	})
 
-	r.Run(":8082")
+	// Start server
+	if err := r.Run(":8082"); err != nil {
+		log.Fatal(err)
+	}
 }

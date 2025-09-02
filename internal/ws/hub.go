@@ -5,11 +5,13 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+
 	"github.com/khanjumed/geopackage/internal/config"
 	"github.com/khanjumed/geopackage/internal/models"
 )
@@ -39,14 +41,7 @@ var (
 	rooms   = map[string]map[*client]bool{} // orderID -> clients
 )
 
-// Public helper to push latest pickup/drop to a room
-func BroadcastOrderInfo(orderID string, pickup models.LatLng, drop models.LatLng) {
-	broadcast(orderID, gin.H{
-		"type":   "order_info",
-		"pickup": gin.H{"lat": pickup.Lat, "lng": pickup.Lng},
-		"drop":   gin.H{"lat": drop.Lat, "lng": drop.Lng},
-	})
-}
+// -------------------- helpers (rooms) --------------------
 
 func register(c *client) {
 	roomsMu.Lock()
@@ -75,6 +70,74 @@ func broadcast(orderID string, payload any) {
 	}
 }
 
+// Public helper to push latest pickup/drop to a room
+func BroadcastOrderInfo(orderID string, pickup models.LatLng, drop models.LatLng) {
+	broadcast(orderID, gin.H{
+		"type":   "order_info",
+		"pickup": gin.H{"lat": pickup.Lat, "lng": pickup.Lng},
+		"drop":   gin.H{"lat": drop.Lat, "lng": drop.Lng},
+	})
+}
+
+// -------------------- helpers (Redis) --------------------
+
+func redisKey(orderID string) string {
+	return "partner_location:" + orderID
+}
+
+func storePartnerLocationInRedis(orderID string, msg wsMsg) {
+	// HSET partner_location:<orderId> lat <v> lng <v> heading <v> speed <v>
+	fields := map[string]interface{}{
+		"lat": msg.Lat,
+		"lng": msg.Lng,
+	}
+	// Only set optional fields if present
+	if msg.Heading != nil {
+		fields["heading"] = *msg.Heading
+	}
+	if msg.Speed != nil {
+		fields["speed"] = *msg.Speed
+	}
+	if err := config.RDB.HSet(config.Ctx, redisKey(orderID), fields).Err(); err != nil {
+		log.Println("redis HSet error:", err)
+	}
+	// TTL (optional): keep last known for some time; comment out if not desired.
+	_ = config.RDB.Expire(config.Ctx, redisKey(orderID), 6*time.Hour).Err()
+}
+
+func getPartnerLocationFromRedis(orderID string) (lat float64, lng float64, heading *float64, speed *float64, ok bool) {
+	data, err := config.RDB.HGetAll(config.Ctx, redisKey(orderID)).Result()
+	if err != nil || len(data) == 0 {
+		return 0, 0, nil, nil, false
+	}
+	if v, ok2 := data["lat"]; ok2 {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			lat = f
+		}
+	}
+	if v, ok2 := data["lng"]; ok2 {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			lng = f
+		}
+	}
+	if v, ok2 := data["heading"]; ok2 {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			heading = &f
+		}
+	}
+	if v, ok2 := data["speed"]; ok2 {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			speed = &f
+		}
+	}
+	if lat == 0 && lng == 0 {
+		return 0, 0, nil, nil, false
+	}
+	return lat, lng, heading, speed, true
+}
+
+// -------------------- WebSocket handler --------------------
+
 // GET /ws?orderId=ORD123&role=customer|partner[&partnerId=P1]
 func HandleWS(c *gin.Context) {
 	orderID := c.Query("orderId")
@@ -86,8 +149,7 @@ func HandleWS(c *gin.Context) {
 		return
 	}
 
-	// TODO: Add JWT auth & authorization in production.
-
+	// Upgrade to WS
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("ws upgrade:", err)
@@ -97,7 +159,7 @@ func HandleWS(c *gin.Context) {
 	register(cl)
 	defer unregister(cl)
 
-	// On connect: push current pickup/drop if exists
+	// On connect: push current pickup/drop (from DB) if exists
 	var row struct{ PickupLat, PickupLng, DropLat, DropLng float64 }
 	_ = config.DB.Get(&row, `SELECT pickup_lat, pickup_lng, drop_lat, drop_lng FROM orders WHERE order_id=?`, orderID)
 	if row.PickupLat != 0 || row.PickupLng != 0 || row.DropLat != 0 || row.DropLng != 0 {
@@ -108,14 +170,25 @@ func HandleWS(c *gin.Context) {
 		})
 	}
 
-	// Also push last known partner location (if table exists/data present)
-	var last struct{ Lat, Lng float64 }
-	_ = config.DB.Get(&last, `SELECT lat, lng FROM partner_locations WHERE order_id=? ORDER BY updated_at DESC LIMIT 1`, orderID)
-	if last.Lat != 0 || last.Lng != 0 {
-		_ = cl.conn.WriteJSON(gin.H{"type": "partner_location", "lat": last.Lat, "lng": last.Lng})
+	// Try Redis for last known partner location first
+	if lat, lng, heading, speed, ok := getPartnerLocationFromRedis(orderID); ok {
+		_ = cl.conn.WriteJSON(gin.H{
+			"type":    "partner_location",
+			"lat":     lat,
+			"lng":     lng,
+			"heading": heading,
+			"speed":   speed,
+		})
+	} else {
+		// Fallback to DB if Redis empty
+		var last struct{ Lat, Lng float64 }
+		_ = config.DB.Get(&last, `SELECT lat, lng FROM partner_locations WHERE order_id=? ORDER BY updated_at DESC LIMIT 1`, orderID)
+		if last.Lat != 0 || last.Lng != 0 {
+			_ = cl.conn.WriteJSON(gin.H{"type": "partner_location", "lat": last.Lat, "lng": last.Lng})
+		}
 	}
 
-	// Read loop
+	// Read loop: partner sends live location; server caches & broadcasts
 	for {
 		_, data, err := conn.ReadMessage()
 		if err != nil {
@@ -125,6 +198,7 @@ func HandleWS(c *gin.Context) {
 		if err := json.Unmarshal(data, &msg); err != nil {
 			continue
 		}
+
 		// Only partner publishes live location
 		if msg.Type == "partner_location" && cl.role == "partner" {
 			if msg.Lat == 0 && msg.Lng == 0 {
@@ -136,15 +210,10 @@ func HandleWS(c *gin.Context) {
 			cl.lastLat, cl.lastLng = msg.Lat, msg.Lng
 			cl.lastSent = time.Now()
 
-			// Persist last-known (optional; ignore error)
-			_, _ = config.DB.Exec(`
-INSERT INTO partner_locations (order_id, partner_id, lat, lng, heading, speed)
-VALUES (?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE lat=VALUES(lat), lng=VALUES(lng),
-  heading=VALUES(heading), speed=VALUES(speed), updated_at=CURRENT_TIMESTAMP
-`, cl.orderID, cl.partnerID, msg.Lat, msg.Lng, msg.Heading, msg.Speed)
+			// 1) Fast path: cache latest in Redis (primary for realtime)
+			storePartnerLocationInRedis(cl.orderID, msg)
 
-			// Broadcast to all viewers in this order room
+			// 2) Broadcast to all viewers of this order
 			broadcast(cl.orderID, gin.H{
 				"type":    "partner_location",
 				"lat":     msg.Lat,
@@ -152,6 +221,14 @@ ON DUPLICATE KEY UPDATE lat=VALUES(lat), lng=VALUES(lng),
 				"heading": msg.Heading,
 				"speed":   msg.Speed,
 			})
+
+			// 3) Optional persistence (kept from your code). You can throttle this more if desired.
+			_, _ = config.DB.Exec(`
+INSERT INTO partner_locations (order_id, partner_id, lat, lng, heading, speed)
+VALUES (?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE lat=VALUES(lat), lng=VALUES(lng),
+  heading=VALUES(heading), speed=VALUES(speed), updated_at=CURRENT_TIMESTAMP
+`, cl.orderID, cl.partnerID, msg.Lat, msg.Lng, msg.Heading, msg.Speed)
 		}
 	}
 }
